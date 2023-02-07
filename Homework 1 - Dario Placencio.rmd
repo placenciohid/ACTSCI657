@@ -1,0 +1,108 @@
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Homework 1 - Dario Placencio
+
+Consider data set PropertyFund.txt. We are interested in the prediction of variable Freq.
+
+```{r}
+read.table("PropertyFund.txt", header = TRUE, sep = " ", dec = ".", stringsAsFactors = FALSE) -> PropertyFund
+```
+
+##### 1. Show the frequency table of variable Freq. Comment on its characteristics.
+
+```{r}
+# Define Variable
+table(PropertyFund$Freq) -> freq_tab
+```
+
+```{r}
+# Mean of Freq
+mean(PropertyFund$Freq) -> mean_freq
+mean_freq
+```
+
+```{r}
+# Median of Freq
+median(PropertyFund$Freq) -> median_freq
+median_freq
+```
+
+```{r pressure, echo=FALSE}
+# Bar plot
+barplot(freq_tab, main = "Frequency of Freq", xlab = "Freq", ylab = "Frequency")
+```
+
+The mean is ~ 0.63 for number of claims and the median is 0. The frequency table shows that the most frequent value is 0, which is also the median.
+The frequency table shows that the values 0 and 1 are the most frequent values.
+
+##### 2. Split data into two parts, using observations from 2006-2008 as training and the rest as test data. Fit a simple linear regression of Freq on Coverage using training data. Report results.Comment on the predictive power of Coverage. Provide justifications.
+```{r}
+PropertyFund$EntityType <- relevel(as.factor(PropertyFund$EntityType),ref="Misc")
+```
+
+```{r}
+# Training data
+PropertyFund[PropertyFund$Year <= 2008, ] -> PropertyFund_train
+```
+
+```{r}
+# Test data
+PropertyFund[PropertyFund$Year > 2008, ] -> PropertyFund_test
+```
+
+```{r}
+# Fit a simple linear regression of Freq on Coverage using training data
+lm(Freq ~ Coverage, data = PropertyFund_train) -> model1
+```
+
+```{r}
+# Report results
+summary(model1)
+```
+
+The Multiple R-squared value is 0.08708, which means that the model explains only ~ 8% of the variability of frequency based on coverage.
+The p-value is < 2.2e-16, which means that the model is statistically significant.
+The coefficient of Coverage is 0.0060801, which means that the model is not very useful for prediction, given the bigger magnitude on the intercept.
+
+##### 3. Write out the model (including model assumptions) that you fit in Question 2. Indicate the parameters of the model and their estimates.
+
+Freq = 0.0060801 * Coverage + 0.4020787
+
+##### 4. Suppose an analyst uses the fitted model in Question 2 to predict the response variable. Will the analyst obtain a negative predictive value for the number of claims? Explain your answer.
+
+The analyst will not get negative values because the coefficients are positive.
+
+##### 5. Refit the model in Question 2 by including EntityType in addition to Coverage. Report the results. Comment on the predictive power of EntityType. Provide justifications.
+
+```{r}
+# Refit the model by including EntityType in addition to Coverage
+lm(Freq ~ Coverage + EntityType, data = PropertyFund_train) -> model2
+```
+
+```{r}
+# Report the results
+summary(model2)
+```
+The Multiple R-squared value is 0.1811, which means that the new model explains 18% of the variability of frequency, with an improvement of around 10% given the inclusion of the entity variable.
+The p-value is < 2.2e-16, which means that the model is statistically significant.
+The coefficients of EntityType compared to Coverage are considerable bigger, which reflect on the bigger influence of these variables on frequency.
+
+##### 6. Use the fitted model in Question 5 to make predictions of Freq in the test data. Calculate the linear correlation coefficient between predicted values and observed values. Comment on the magnitude of the correlation.
+
+```{r}
+# Use the fitted model in Question 5 to make predictions of Freq in the test data
+predict(model2, PropertyFund_test) -> predicted_freq
+```
+
+```{r}
+# Calculate the linear correlation coefficient between predicted values and observed values
+cor(predicted_freq, PropertyFund_test$Freq) -> corr
+```
+
+```{r}
+corr
+```
+
+The correlation is 0.4743426, is positive so the predicted and observed values move in the same direction. This is a relatively strong correlation close to the 0.5 mark.
