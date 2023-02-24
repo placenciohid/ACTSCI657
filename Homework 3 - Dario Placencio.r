@@ -101,3 +101,7 @@ expected_claim <- eta_hat * gamma(1 + 1 / beta_hat)
 
 prob_loss_100k <- 1 - pweibull(100000, scale = eta_hat, shape = beta_hat)
 prob_loss_100k
+
+# In 1), the probability of an annual loss greater than $100,000 is calculated using only the Kaplan-Meier estimation of the survival function. This means that the probability is calculated based on the historical data on loss amounts without taking into account any additional information, such as the coverage amount.
+
+# In 5), the probability of an annual loss greater than $100,000 is calculated using the Weibull regression model. This means that the probability is calculated based on both the historical data on loss amounts and additional information, such as the entity type and coverage amount. The Weibull regression model provides a more accurate forecast by taking into account the effect of the predictor variables on the claim amounts.
