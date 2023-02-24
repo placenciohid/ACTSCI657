@@ -81,12 +81,20 @@ plot(base_haz, xlab = "Claim Amount", ylab = "Cumulative Hazard Function", main 
 4. Consider the local government entity of the Madison School District. Assume that the logarithm of coverage amount (Coverage) is 500 (in thousand dollars). Use the cox regression in 3) to forecast the probability of an annual losses of greater than 100,000 dollars
 
 ```{r}
-# create a new data frame with the covariate values for the Madison School District
-newdat <- data.frame(EntityType = "School", Coverage = log(500))
+lambda <- base_haz$hazard[base_haz$time == 1]
 
-# use the cox regression model to predict the risk of an annual loss greater than 100,000 dollars
-risk_pred <- predict(cox_mod, newdata = newdat, type = "risk", times = 100000)
+# Define k as the number of covariates in the Cox model
+k <- length(coef(cox_mod))
 
-# forecast the probability of an annual loss greater than 100,000 dollars
-1 - risk_pred
+# Define H0func function
+H0func <- function(t) {
+  (1/k) * (log(1 + k*lambda*t) - (k*lambda*t)/(1 + k*lambda*t))
+}
+
+# Calculate probability of losses greater than 100,000 dollars
+reg <- coefcox["factor(EntityType)School"] * 1 + coefcox["log(Coverage)"] * log(500)
+reg <- as.numeric(reg)
+St <- exp(-H0func(1)) ^ (exp(reg))
+1 - St
 ```
+
