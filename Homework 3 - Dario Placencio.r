@@ -16,12 +16,13 @@ library(survival)
 surv_obj <- Surv(dat.loss$Claim)
 
 # Estimate the survival function using Kaplan-Meier method
-km_fit <- survfit(surv_obj ~ 1, data = dat.loss)
+km_fit <- survfit(surv_obj ~ 1, data = dat.loss, type = "kaplan-meier")
 
 # Plot the estimated survival function
 plot(km_fit, xlab = "Loss Amount", ylab = "Survival Probability",
      main = "Kaplan-Meier Estimation of Loss Amount Survival Function")
 
+summary(km_fit, times = 100000)
 
 # 2. Consider the local government entity of the Madison School District. Assume that the coverage amount (Coverage) is 500 (in million dollars). 
 # Use the estimated survival function 1) to forecast the probability of an annual losses of greater than 100,000 dollars.
@@ -41,7 +42,7 @@ cat("The probability of an annual loss greater than $100,000 for the Madison Sch
 # Comment on the effect of Coverage on Claim.
 
 # Fit Weibull regression model
-weib_reg <- survreg(Surv(Claim) ~ EntityType + log(Coverage), data = dat.loss, dist = "weibull")
+weib_reg <- survreg(Surv(Claim) ~ factor(EntityType) + log(Coverage), data = dat.loss, dist = "weibull")
 
 # Report estimated parameters
 summary(weib_reg)
