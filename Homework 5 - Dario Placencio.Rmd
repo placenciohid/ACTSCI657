@@ -8,49 +8,40 @@ date: "2023-03-12"
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-Consider data set PropertyFund.txt. We are interested in the prediction of variable Freq, i.e. the number of claims.
+```{r}
+options(digits = 5) 
+```
+
+
+### Consider data set PropertyFund.txt. We are interested in the prediction of variable Freq, i.e. the number of claims.
 
 ```{r}
 # Load the data
 property_fund <- read.table("PropertyFund.txt", header = TRUE)
 ```
 
-## 1. Fit a Poisson regression using EntityType, AlarmCredit, and log of Coverage as predictors. Report your result.
+### 1. Fit a Poisson regression using EntityType, AlarmCredit, and log of Coverage as predictors. Report your result.
 
 ```{r}
 # Fit Poisson regression model with EntityType, AlarmCredit, and log of Coverage as predictors
-poisson_model <- glm(Freq ~ EntityType + AlarmCredit + log(Coverage), data = property_fund, family = "poisson")
+poisson_model <- glm(Freq ~ EntityType + AlarmCredit + log(Coverage), data = property_fund, family = "quasipoisson")
 
 # View the summary of the model
 summary(poisson_model)
 ```
-## 2. An analyst states that presumably the number of claims is proportional to the coverage amount, as a result, the variable Coverage should be treated as an exposure. Based on the results in 1, provide a counterargument for treating Coverage as an exposure.
+### 2. An analyst states that presumably the number of claims is proportional to the coverage amount, as a result, the variable Coverage should be treated as an exposure. Based on the results in 1, provide a counterargument for treating Coverage as an exposure.
 
-The analyst's statement assumes that the relationship between the number of claims and coverage amount is linear. However, the Poisson regression model in 1 does not assume a linear relationship between the two variables. In fact, the model includes the logarithm of the coverage amount as a predictor, which allows for a more flexible and potentially nonlinear relationship between the number of claims and coverage amount.
+Firstly, the coefficient for log(Coverage) in the model is positive and highly significant, suggesting that an increase in coverage is associated with an increase in the number of claims. This contradicts the assumption of proportionality between the number of claims and the coverage amount.
 
-Furthermore, treating Coverage as an exposure variable implies that it is a fixed quantity that does not vary across observations. However, in the dataset, Coverage is a variable that can vary between policies. This suggests that Coverage is not a fixed exposure and should not be treated as such.
+Secondly, the deviance residuals in the model suggest overdispersion, which means that the variance of the data is higher than what would be expected under a Poisson distribution. This indicates that there may be other factors beyond Coverage that are influencing the number of claims.
 
-## 3. A main limitation of a Poisson regression is it does not accommodate overdispersion in the data. Provide an empirical evidence to support the presence of overdispersion.
+### 3. A main limitation of a Poisson regression is it does not accommodate overdispersion in the data. Provide an empirical evidence to support the presence of overdispersion.
 
-One way to detect overdispersion in a Poisson regression model is to generate and evalute the dispersion parameter.
+One way to assess the presence of overdispersion is to compare the residual deviance to the residual degrees of freedom. If the residual deviance is much larger than the residual degrees of freedom, then there is evidence of overdispersion. In this case, the residual deviance is 6434.6 and the residual degrees of freedom is 5180, which suggests that there may be overdispersion present in the data. 
 
-```{r}
-# Calculate the residual deviance and degrees of freedom
-resid_deviance <- sum(poisson_model$deviance)
-df <- poisson_model$df.residual
+Additionally, the dispersion parameter estimated by the model is 1.7585, which is greater than 1, further suggesting that the data may be overdispersed.
 
-# Calculate the dispersion parameter
-dispersion <- resid_deviance / df
-
-# Print results
-cat("Residual deviance:", resid_deviance, "\n")
-cat("Degrees of freedom:", df, "\n")
-cat("Dispersion parameter:", dispersion, "\n")
-```
-
-The dispersion parameter is calculated as the ratio of the residual deviance to the degrees of freedom. If the dispersion parameter is close to 1, then there is no evidence of overdispersion. However, in this case the dispersion parameter is greater than 1 (with a value of 1.24), then there is evidence of overdispersion.
-
-## 4. Fit a negative binomial regression with the same predictors in the Poisson model. Report the results.
+### 4. Fit a negative binomial regression with the same predictors in the Poisson model. Report the results.
 
 ```{r}
 library(MASS)
@@ -61,42 +52,45 @@ model_nb <- glm.nb(Freq ~ EntityType + AlarmCredit + log(Coverage), data = prope
 # Print summary of results
 summary(model_nb)
 ```
-## 5. Poisson regression is a limiting case of negative binomial regression. Identify the parameter in the output in 3 to justify that the data support the negative binomial model over the Poisson model.
+### 5. Poisson regression is a limiting case of negative binomial regression. Identify the parameter in the output in 3 to justify that the data support the negative binomial model over the Poisson model.
 
-In the output of question 3, we calculated the dispersion parameter for the Poisson model, the parameter with value well above 1 showed the dispersion of the data. This is a limitation for the Poisson model, considering that it assumes that the variance of the response variable is equal to its mean, which means it assumes no overdispersion.
+There is multiple approaches to compare the fitting level of the model. In question number 3, we used:
 
-In the case for the negative binomial model, we have the following dispersion value.
+- Dispersion Parameter: For the Poisson distribution our value was well above 1 (with an actual value of 1.79) which suggest strong overdispersion for the model. For the negative binomial value is well different from 0 (with a value of 0.98) indicating the better fitting of this model.
 
-```{r}
-# Dispersion parameter
-# Calculate the residual deviance and degrees of freedom
-resid_deviance_nb <- sum(model_nb$deviance)
-df_nb <- model_nb$df.residual
+- Deviance of the model: The deviance of the negative binomial model (3688) is significantly lower that the deviance of the poisson model (6434), close to 30% lower, suggesting than the first model is better fitting the data on this case.
 
-# Calculate the dispersion parameter
-dispersion_nb <- resid_deviance_nb / df_nb
-
-# Print results
-cat("Residual deviance:", resid_deviance_nb, "\n")
-cat("Degrees of freedom:", df_nb, "\n")
-cat("Dispersion parameter:", dispersion_nb, "\n")
-```
-The estimate is 0.712, which means the data have less dispersion than would be expected under a Poisson distribution, presenting underdispersion for the negative bonimial distribution.
-
-Regarding to determine if the negative binomial model is a better fit than the Poisson model, we can compare the fit of the two models using a likelihood ratio test. 
-
-To perform the likelihood ratio test, we can compare the deviance of the negative binomial model to the deviance of the Poisson model. The null hypothesis is that the negative binomial model does not provide a significantly better fit than the Poisson model. The alternative hypothesis is that the negative binomial model does provide a significantly better fit than the Poisson model. 
-
-The test statistic is calculated as the difference in deviance between the two models, which follows a chi-squared distribution with degrees of freedom equal to the difference in the number of parameters between the two models.
+### 6. Consider the Madison Metropolitan School District. The policyholder receives 10% alarm credit in premium, and has coverage amount of 100 million dollars.
 
 ```{r}
-# Likelihood ratio test with Anova
-test <- anova(poisson_model, model_nb, test = "Chisq")
+# Predict expected number of claims from Poisson model
+poisson_preds <- predict(poisson_model, newdata = data.frame(EntityType = "School", AlarmCredit = "AC10%", Coverage = 100), type = "response")
 
-# Extract p-value of likelihood ratio test
-p_value <- test["Pr(>Chisq)"][2]
-p_value
+# Predict expected number of claims from Negative Binomial model
+nb_preds <- predict(model_nb, newdata = data.frame(EntityType = "School", AlarmCredit = "AC10%", Coverage = 100), type = "response")
+
 ```
-The output of the anova() function will include the deviance, degrees of freedom, and p-value for the likelihood ratio test. The p-value indicates the strength of evidence against the null hypothesis that the Poisson model provides a sufficient fit. A p-value less than 0.05 indicates that we can reject the null hypothesis and conclude that the negative binomial model provides a better fit to the data than the Poisson model.
 
-Therefore, we can use the likelihood ratio test results as evidence to support the use of a negative binomial model over a Poisson model in this case.
+#### 6.1 Compare the predicted expected number of claims from the Poisson and negative binomial models.
+
+```{r}
+# Print predicted expected number of claims from Poisson model
+poisson_preds
+
+# Print predicted expected number of claims from Negative Binomial model
+nb_preds
+```
+The predicted expected number of claims from the Poisson model is 0.78371, while the predicted expected number of claims from the Negative Binomial model is 0.7926. These two predictions are very close to each other, suggesting that either model could be a reasonable choice for predicting the number of claims in the Madison Metropolitan School District. However, since the Negative Binomial model allows for greater flexibility in the variance, it may be a better choice if the variance of the number of claims is indeed larger than the mean.
+
+#### 6.2 Compare the predicted probability that the policyholder will have more than 5 claims over the year from the Poisson and negative binomial models.
+
+```{r}
+# Calculate predicted probability for Poisson model
+poisson_prob <- 1 - ppois(5, lambda=poisson_preds)
+poisson_prob
+
+# Calculate predicted probability for Negative Binomial model
+nb_prob <- 1 - pnbinom(5, size=model_nb$theta, mu=nb_preds)
+nb_prob
+```
+The predicted probability that the policyholder will have more than 5 claims over the year is much lower in the Poisson model (0.000165) compared to the negative binomial model (0.007729). This is expected since the negative binomial model allows for greater variability in the data and is more suitable when the mean and variance are not equal, which is the case for the given data. The Poisson model assumes that the mean and variance are equal, and hence it may underestimate the probability of extreme events.
