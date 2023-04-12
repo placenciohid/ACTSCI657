@@ -1,0 +1,94 @@
+---
+title: "Homework 6 - Dario Placencio"
+output: html_document
+date: "2023-04-04"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Consider a ratemaking application of a property insurer. The goal is to determine the rate for each risk class. The insurer uses building limit (amount of insurance) as exposure, and calculates pure premium by multiplying the rate by the exposure.
+
+We use data set HailRisk.txt for illustration. Assume that the insurer use two variables SingleFamily and ShingleRoof to create risk classes.
+
+#### 1. How many risk classes are used by the insurer? How are these risk classes defined?
+
+```{r}
+# Load the data
+rm(list=ls())
+data <- read.table(file='HailRisk.txt', header = TRUE, sep = "", dec = ".")
+
+# Create risk classes based on SingleFamily and ShingleRoof variables
+risk_classes <- paste0("SF", data$SingleFamily, "_SR", data$ShingleRoof)
+
+# Count the number of unique risk classes
+n_classes <- length(unique(risk_classes))
+
+# Print the number of risk classes and their definitions
+cat("The insurer uses", n_classes, "risk classes:\n")
+cat(unique(risk_classes))
+```
+This means that the insurer uses four risk classes, defined by the combination of SingleFamily and ShingleRoof variables. The four risk classes are:
+
+    SF0_SR0: non-single family with non-shingle roof
+    SF0_SR1: non-single family with shingle roof
+    SF1_SR0: single family with non-shingle roof
+    SF1_SR1: single family with shingle roof
+
+#### 2. Actuary A suggests to fit the below Tweedie model to calculate the rate for each risk class.
+
+```{r}
+library(rlang)
+library(statmod)
+library(tweedie)
+library(dplyr)
+```
+```{r}
+library(statmod)
+fit1 <- glm(paidloss~ SingleFamily + ShingleRoof, offset = log(BLDG_LMT),
+           family=tweedie(var.power=1.5,link.power=0), data=data)  
+summary(fit1)
+```
+#### Explain the role of variable BLDG_LMT in the process of model fitting. Calculate the rate for the four risk classes based on the fitted model.
+
+The variable BLDG_LMT plays the role of an offset term. The offset term is used to adjust the exposure or the amount of insurance coverage, so that the rate can be calculated per unit of exposure. In this case, the offset term is set to log(BLDG_LMT), which means that the model estimates the effect of SingleFamily and ShingleRoof variables on the ratio of paid losses to log(BLDG_LMT).
+
+```{r}
+# Calculate the rate for each risk class based on the fitted model
+
+# Calculate the rate for each observation
+rates <- exp(fit1$coefficients[1] + 
+             fit1$coefficients[2] * data$SingleFamily +
+             fit1$coefficients[3] * data$ShingleRoof) / data$BLDG_LMT
+
+# Aggregate the rates by risk class
+aggregate(rates, by = list(risk_classes), FUN = mean)
+```
+#### 3. Actuary B argues that the above approach did not consider the interaction between the two risk classification variables. Propose an alternative model to account for the interaction. Recalcuate the rate for the four classes using the new model.
+
+To include an interaction between SingleFamily and ShingleRoof, we can fit a new Tweedie GLM model
+
+```{r}
+# Fit a new Tweedie GLM model with interaction
+fit2 <- glm(paidloss ~ SingleFamily * ShingleRoof, offset = log(BLDG_LMT),
+            family = tweedie(var.power = 1.5, link.power = 0), data = data)
+summary(fit2)
+```
+```{r}
+# Calculate the rate for each observation
+rates2 <- exp(fit2$coefficients[1] +
+              fit2$coefficients[2] * data$SingleFamily +
+              fit2$coefficients[3] * data$ShingleRoof +
+              fit2$coefficients[4] * data$SingleFamily * data$ShingleRoof) / data$BLDG_LMT
+
+# Aggregate the rates by risk class
+aggregate(rates2, by = list(risk_classes), FUN = mean)
+```
+#### 4. The chief actuary evaluated the above two rating plans, and pointed out a major issue with the data used to determine the rate. What is the issue that the chief actuary is concerned with?
+
+The chief actuary may be concerned about the statistical significance of the models used to determine the rates. 
+
+The models may not be reliable in predicting future losses based on the data used. On fit 1 only Roof is significant, while in fit2 none of the variables are significant statistically.
+    
+
