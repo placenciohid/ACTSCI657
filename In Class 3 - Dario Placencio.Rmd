@@ -1,0 +1,72 @@
+---
+title: "In Class 3 - Dario Placencio"
+output: html_document
+date: "2023-03-22"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Consider data set PropertyFund.txt. We are interested in the prediction of variable Freq, i.e. the number of claims.
+
+```{r}
+# load the data
+data <- read.table("PropertyFund.txt", header = TRUE)
+```
+
+1. Split data into training and test sets, using observations in years 2006-2008 as training and 2009-2010 as test.
+
+```{r}
+# filter the data for years 2006-2010
+data <- subset(data, Year >= 2006 & Year <= 2010)
+
+# split the data into training (2006-2008) and test (2009-2010) sets
+train_data <- subset(data, Year <= 2008)
+test_data <- subset(data, Year >= 2009)
+```
+
+2. Using training data, fit a Poisson regression using EntityType, AlarmCredit, and log of Coverage as predictors. Report your result. Calculate the PITs using the test data, and comment on the probabilistic calibration using histogram.
+
+```{r}
+library(MASS)
+set.seed(182)
+
+# fit a Poisson regression using EntityType, AlarmCredit, and log of Coverage as predictors
+model <- glm(Freq ~ EntityType + AlarmCredit + log(Coverage), data = train_data, family = "poisson")
+
+# predict counts using test data
+test_data$predicted_counts <- predict(model, newdata = test_data, type = "response")
+
+# calculate PIT values
+v <- runif(nrow(test_data))
+test_data$pit <- (1-v)*ppois(test_data$Freq-1, test_data$predicted_counts) + v*ppois(test_data$Freq, test_data$predicted_counts)
+
+# plot histogram of PIT values
+hist(test_data$pit, breaks = 10, col = "blue", xlab = "Probability Integral Transform (PIT)", main = "Histogram of PIT Values")
+```
+
+3. Using training data, fit a negative binomial regression using EntityType, AlarmCredit, and log of Coverage as predictors. Report your result. Calculate the PITs using the test data, and comment on the probabilistic calibration using histogram.
+
+```{r}
+# fit a negative binomial regression using EntityType, AlarmCredit, and log of Coverage as predictors
+library(MASS)
+set.seed(182)
+model <- glm.nb(Freq ~ EntityType + AlarmCredit + log(Coverage), data = train_data)
+
+# predict counts using test data
+test_data$predicted_counts <- predict(model, newdata = test_data, type = "response")
+
+# calculate PIT values
+v <- runif(nrow(test_data))
+test_data$pit <- (1-v)*pnbinom(test_data$Freq-1, size = model$theta, mu = test_data$predicted_counts) + v*pnbinom(test_data$Freq, size = model$theta, mu = test_data$predicted_counts)
+
+# plot histogram of PIT values
+hist(test_data$pit, breaks = 10, col = "blue", xlab = "Probability Integral Transform (PIT)", main = "Histogram of PIT Values")
+```
+
+
+4. (Optional) Are the above Poisson and negative binomial models marginally calibrated?
+
+The Poission model seems not so well calibrated in comparison to the negative binomial model with a little bit better distribution. It's a little bit expected considering the additional flexibility of the last model.
+

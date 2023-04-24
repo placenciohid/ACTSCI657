@@ -1,0 +1,158 @@
+---
+title: "ACT SCI 657 HW6"
+author: "Patrick Hsun"
+date: "2023-04-02"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r }
+
+rm(list=ls())
+setwd("~/Spring 2022 Courses/ACT SCI 657/HW6")
+
+library(statmod)
+library(tweedie)
+library(dplyr)
+
+dat <- read.table(file='HailRisk.txt', header = TRUE, sep = "", dec = ".")
+
+summary(dat)
+
+```
+1. 
+```{r}
+
+n_distinct(dat$SingleFamily)
+
+```
+```{r}
+
+n_distinct(dat$ShingleRoof)
+
+```
+Because both of the variables are binary we can simply calculate the number of possible classes as 2^x. In this class x = 2, our number of relevant variables, and we end up with 4 total classes. If we describe the risk class as [SingleFamily, ShingleRoof] then our risk classes are: 
+[0,0], not a single family and no shingle roofs
+[1,0], single family but no shingle roofs
+[0,1], not a single family but have shingle roofs
+[1,1], single family AND have shingle roofs.
+
+
+2. What does BLDG_LMT do in the following? What are the rates for the 4 risk classes?
+
+```{r}
+
+# read data
+
+rm(list=ls())
+
+dat <- read.table(file='HailRisk.txt', header = TRUE, sep = "", dec = ".")
+
+fit1 <- glm(paidloss~ SingleFamily + ShingleRoof, offset = log(BLDG_LMT),
+           family=tweedie(var.power=1.5,link.power=0), data=dat) 
+
+summary(fit1)
+
+```
+log(BLDG_LMT) is used as an exposure variable in this case. So in this case, the log of the amount of coverage dictates the exposure. 
+
+```{r}
+
+# Rate for base case
+coef <- coef(fit1)
+
+exp(coef['(Intercept)'])
+
+```
+```{r}
+
+# Rate for Single Family but no Shingle Roofs
+
+exp(coef['(Intercept)'] + coef['SingleFamily'])
+
+```
+```{r}
+
+# Rate for not Single Family but have Shingle Roofs
+
+exp(coef['(Intercept)'] + coef['ShingleRoof'])
+
+```
+```{r}
+
+# Rate for Single Family AND have Shingle Roofs
+
+exp(coef['(Intercept)'] + coef['SingleFamily'] + coef['ShingleRoof'])
+
+```
+
+Base Case [0,0]: 0.05163306 
+Single Family, No Shingles [1,0]: 0.05850885 
+Not Single Family, Shingles [0,1]: 0.04703398 
+Both: 0.05329733 
+
+3. Alternative model to account for interaction between the 2 risk classification variables. Recalculate rates for the 4 classes.
+
+```{r}
+# Alternative model accounting for interaction
+
+fit2 <- glm(paidloss~ SingleFamily + ShingleRoof + SingleFamily*ShingleRoof, offset = log(BLDG_LMT),
+           family=tweedie(var.power=1.5,link.power=0), data=dat) 
+
+summary(fit2)
+
+```
+
+```{r}
+
+# New rate for base case
+coef2 <- coef(fit2)
+
+exp(coef2['(Intercept)'])
+
+```
+
+```{r}
+
+# New rate for Single Family but no Shingle Roofs
+
+exp(coef2['(Intercept)'] + coef2['SingleFamily'])
+
+```
+
+```{r}
+
+# New rate for not Single Family but have Shingle Roofs
+
+exp(coef2['(Intercept)'] + coef2['ShingleRoof'])
+
+```
+
+```{r}
+
+# New rate for Single Family AND have Shingle Roofs AND interaction 
+
+exp(coef2['(Intercept)'] + coef2['SingleFamily'] + coef2['ShingleRoof'] + coef2['SingleFamily:ShingleRoof'])
+
+```
+
+Base Case [0,0]: 0.06503184  
+Single Family, No Shingles [1,0]: 0.0582962  
+Not Single Family, Shingles [0,1]: 0.04466565  
+Both + Interaction: 0.05331823  
+
+```{r}
+
+# Just checking if log(BLDG_LMT) is appropriate for an exposure variable
+
+fit3 <- glm(paidloss~ SingleFamily + ShingleRoof + log(BLDG_LMT),
+           family=tweedie(var.power=1.5,link.power=0), data=dat)  
+summary(fit3)
+
+# Pretty close to 1 so should be appropriate
+
+```
+
